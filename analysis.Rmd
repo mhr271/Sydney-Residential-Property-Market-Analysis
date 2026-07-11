@@ -1,0 +1,500 @@
+---
+title: "**Sydney Residential Property Market Analysis**"
+author: "mhr271"
+date: "18/05/2026"
+output: pdf_document
+---
+### Executive Summary
+
+This report shows the findings of a data driven analysis of the Sydney residential property market based on 3,676 house sales recorded in 2021. The investment group has traditionally relied on industry experience and agent advice when making acquisition decisions. This analysis adds a quantitative basis to support that experience by identifying the main factors that influence property prices and turning them into clear, practical recommendations for the group’s future investment strategy.
+
+Distance from the Sydney CBD was the strongest predictor of sale price in the dataset. Properties in inner suburbs sold for almost double the price of those in outer suburbs, and properties in middle ring suburbs were around 28% more expensive than those in outer suburbs. This trend remained consistent regardless of property size or features. The investment group should use distance from CBD as the main factor when selecting acquisition targets, as no other single factor had a stronger influence on price.
+
+Suburb income levels also increase property prices independently.The socioeconomic status of a suburb was the second strongest factor affecting sale price. Properties in higher income suburbs consistently sold for higher prices, even when compared with similar properties in lower income areas. This shows that two similar properties can have very different values depending on the suburb they are located in. The group should focus on suburbs with above average household incomes, especially in middle ring areas where CBD distance alone may not clearly separate property values.
+
+Bathrooms turned out to be the  most valuable property feature among all of them .Among all physical property characteristics, the number of bathrooms had the strongest and most consistent effect on sale price. Each additional bathroom was linked to about a 14% increase in value. This was much higher than the impact of extra bedrooms or parking spaces, which increased value by only around 2% each. When comparing properties, bathroom count should be given significant importance. For renovation projects, adding or improving bathrooms is likely to produce the highest increase in sale value and should be prioritised.
+
+Large properties consistently sold for the highest prices across the market. However, the relationship between size and price is not simple. Smaller properties in expensive inner city suburbs are often sold for more than medium sized properties in middle ring areas. Property size alone should not be treated as a measure of value. The best acquisition opportunities are likely to be large properties located in high income suburbs close to the CBD, where both size and location premiums work together.
+
+The investment group should focus on acquiring properties in inner and middle ring suburbs with strong socioeconomic conditions, while prioritising homes with more bathrooms and larger block sizes. Properties in outer suburbs should only be considered if there is strong value add potential. Where renovation budgets are available, bathroom upgrades are likely to provide the  best return on investment. This analysis provides a strong quantitative foundation for assessing fair value, but it should still be combined with local market knowledge, as factors such as property condition, school catchment areas, and recent street level developments also affect prices and were not included in this dataset.
+
+\newpage
+
+
+### Introduction
+
+The Sydney residential property market is one of the most active and closely monitored markets in Australia, where  property prices are heavily influenced by a combination of property features, location, and suburb characteristics. In 2021, the market experienced significant growth, making it a particularly important period for understanding the key factors that drive property values.
+
+In this report, I analyse the Sydney residential property market to help a property investment group improve its decision making through a more data driven approach. While the group has traditionally relied on industry experience and advice from real estate professionals, there is now a need to better understand which property and suburb characteristics are most strongly associated with residential sale prices. For this analysis I will be using a dataset of residential property sales across Sydney in 2021. The dataset includes important property level variables such as the number of bedrooms, bathrooms, parking spaces, and property size, as well as suburb level variables like median income and distance from the CBD. These variables allow for a detailed examination of both physical property attributes and location based factors.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+load("sydneyproperty2021.RData")
+library(knitr)
+library(e1071)
+```
+### Task 1 
+### Summary Statistics For key Variables
+
+```{r summary-stats, echo=FALSE, warning=FALSE, message=FALSE}
+stats_table <- data.frame(
+  Variable = c("Sale Price (AUD)", "Property Size (m²)",
+               "Distance from CBD (km)",
+               "Suburb Median Income (AUD)",
+               "Suburb Elevation (m)",
+               "Bedrooms", "Bathrooms", "Parking Spaces"),
+  Mean     = c(mean(house$price), mean(house$property_size),
+               mean(house$km_from_cbd), mean(house$suburb_median_income),
+               mean(house$suburb_elevation), mean(house$num_bed),
+               mean(house$num_bath), mean(house$num_parking)),
+  Median   = c(median(house$price), median(house$property_size),
+               median(house$km_from_cbd), median(house$suburb_median_income),
+               median(house$suburb_elevation), median(house$num_bed),
+               median(house$num_bath), median(house$num_parking)),
+  SD       = c(sd(house$price), sd(house$property_size),
+               sd(house$km_from_cbd), sd(house$suburb_median_income),
+               sd(house$suburb_elevation), sd(house$num_bed),
+               sd(house$num_bath), sd(house$num_parking)),
+  Min      = c(min(house$price), min(house$property_size),
+               min(house$km_from_cbd), min(house$suburb_median_income),
+               min(house$suburb_elevation), min(house$num_bed),
+               min(house$num_bath), min(house$num_parking)),
+  Max      = c(max(house$price), max(house$property_size),
+               max(house$km_from_cbd), max(house$suburb_median_income),
+               max(house$suburb_elevation), max(house$num_bed),
+               max(house$num_bath), max(house$num_parking)),
+  Skewness = c(skewness(house$price), skewness(house$property_size),
+               skewness(house$km_from_cbd),
+               skewness(house$suburb_median_income),
+               skewness(house$suburb_elevation),
+               NA, NA, NA)
+)
+
+stats_table[, 2:7] <- lapply(stats_table[, 2:7], function(x)
+  ifelse(is.na(x), "—", formatC(x, format="f", digits=2, big.mark=",")))
+
+kable(stats_table, row.names=FALSE)
+```
+The dataset contains continuous, discrete, and categorical variables. For Continuous variables such as sale price, property size, distance from the CBD, and suburb income I used  histograms and scatterplots to examine distributions, trends, and relationships and , for Discrete and categorical variables, including bedrooms, bathrooms, parking spaces, and grouped location variables I used comparative boxplots to compare differences in property prices across market segments.
+
+\newpage
+### Histograms,Comparative Boxplots and Scatter Plots
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=10,}
+par(mfrow = c(4, 2), mar = c(4, 4, 3, 1))
+hist(house$price,
+     main = "Distribution of Property Prices",
+     xlab = "Price (AUD)",
+     col = "skyblue",
+     border = "white")
+hist(house$property_size,
+     main = "Distribution of Property Size",
+     xlab = "Property Size (m²)",
+     col = "lightgreen",
+     border = "white")
+hist(house$km_from_cbd,
+     main = "Distribution of Distance from CBD",
+     xlab = "Distance from CBD (km)",
+     col = "lightpink",
+     border = "white")
+hist(house$suburb_median_income,
+     main = "Distribution of Suburb Median Income",
+     xlab = "Median Income (AUD)",
+     col = "wheat",
+     border = "white")
+boxplot(price ~ km_from_cbd_group,
+        data = house,
+        main = "Price by Distance Group",
+        xlab = "CBD Distance Group",
+        ylab = "Price (AUD)",
+        col = c("lightblue", "lightgreen", "lightpink"))
+boxplot(price ~ suburb_median_income_group,
+        data = house,
+        main = "Price by Income Group",
+        xlab = "Income Group",
+        ylab = "Price (AUD)",
+        col = c("lightyellow", "orange", "tomato"))
+boxplot(price ~ property_size_group,
+        data = house,
+        main = "Price by Property Size Group",
+        xlab = "Property Size Group",
+        ylab = "Price (AUD)",
+        col = c("lightcyan", "lightgreen", "lightblue"))
+boxplot(price ~ num_bed,
+        data = house,
+        main = "Price by Bedrooms",
+        xlab = "Bedrooms",
+        ylab = "Price (AUD)",
+        col = "plum")
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=10}
+par(mfrow = c(3, 2), mar = c(4, 4, 3, 1))
+boxplot(price ~ num_bath,
+        data = house,
+        main = "Price by Bathrooms",
+        xlab = "Bathrooms",
+        ylab = "Price (AUD)",
+        col = "lightcoral")
+boxplot(price ~ num_parking,
+        data = house,
+        main = "Price by Parking Spaces",
+        xlab = "Parking Spaces",
+        ylab = "Price (AUD)",
+        col = "plum")
+plot(house$property_size, house$price,
+     main = "Price vs Property Size",
+     xlab = "Property Size (m²)",
+     ylab = "Price (AUD)",
+     pch = 16,
+     col = rgb(0, 0, 1, 0.4))
+abline(lm(price ~ property_size, data=house), col="red", lwd=2)
+plot(house$km_from_cbd, house$price,
+     main = "Price vs Distance from CBD",
+     xlab = "Distance from CBD (km)",
+     ylab = "Price (AUD)",
+     pch = 16,
+     col = rgb(1, 0, 0, 0.4))
+lines(lowess(house$km_from_cbd, house$price), col="red", lwd=2)
+plot(house$suburb_median_income, house$price,
+     main = "Price vs Median Income",
+     xlab = "Median Income (AUD)",
+     ylab = "Price (AUD)",
+     pch = 16,
+     col = rgb(0, 0.5, 0, 0.4))
+abline(lm(price ~ suburb_median_income, data=house), col="red", lwd=2)
+plot(house$suburb_elevation, house$price,
+     main = "Price vs Suburb Elevation",
+     xlab = "Elevation (m)",
+     ylab = "Price (AUD)",
+     pch = 16,
+     col = rgb(0.5, 0, 0.5, 0.4))
+abline(lm(price ~ suburb_elevation, data=house), col="red", lwd=2)
+par(mfrow=c(1,1))
+```
+\newpage
+
+**Price:**The mean sale price is $2,009,748.34 and the median is $1,782,000.00. The gap of around $228,000 between these values suggests a positive skew. The standard deviation of $1,039,406.24 is large compared to the mean, showing high variation in property prices. Prices range from $468,000.00 to $8,000,000.00, giving a spread of $7,532,000. A skewness of 1.72 confirms strong positive skew, which can also be seen in the histogram’s long right tail and the high-value outliers shown in the boxplot. These outliers likely represent luxury properties in inner-city or high-income suburbs. The strong market activity in 2021 following COVID-19 restrictions may have increased both prices and price variation.
+
+**Property Size**The mean property size is 680.42 m2 and the median is 621.00 m2, with the higher mean suggesting that a small number of very large properties are pulling the average up. The standard deviation of 408.23 m2 is quite large, and property sizes range from 53.00 m2 to 4,900.00 m2. The smallest properties are likely studios or very small units, while the largest suggest rural-fringe or acreage properties. A skewness of 3.74, the highest among all continuous variables, shows a very strong positive skew. The histogram confirms that most properties are below 1,000 m2, with only a few properties extending into the 2,000–4,900 m2 range. The scatterplot of price versus property size shows a moderate positive relationship, with larger properties generally selling for higher prices, although the relationship is not perfectly consistent.
+
+
+**Distance from CBD:** The mean distance from the CBD is 25.41 km and the median is 20.91 km, with the mean being around 4.5 km higher, showing moderate positive skew. The standard deviation is 17.07 km, and distances range from 1.85 km to 84.79 km, covering both inner-city and outer suburban areas. A skewness of 0.91 confirms moderate positive skew. The histogram shows that most properties are located within the 10–30 km range from the CBD, with fewer properties in outer areas. The scatterplot of price versus CBD distance shows a clear negative relationship, where properties closer to the city generally achieve higher sale prices. The comparative boxplot also shows that inner-ring suburbs have noticeably higher median prices than middle or outer suburbs.
+
+**Suburb Median Income:** The mean suburb median income is $40,571.56 and the median is $39,884.00. The standard deviation is $10,477.78, and incomes range from $14,248.00 to $78,780.00, showing clear socio-economic differences between suburbs. A skewness of 0.73 shows mild positive skew. The histogram appears close to bell-shaped, centred around $35,000–$45,000, with a longer tail towards higher-income suburbs. The scatterplot of price versus median income shows a clear positive relationship, and the income-group boxplot confirms that high-income suburbs generally have much higher median property prices.
+
+**Suburb Elevation:** The mean suburb elevation is 57.91 m and the median is 41.00 m, with the difference between them showing positive skew caused by a small number of high-elevation suburbs. The standard deviation is 52.65 m, which is large compared to the mean, and elevations range from 0.00 m to 405.00 m. This reflects Sydney’s varied landscape, from coastal suburbs at sea level to higher western and northern suburbs. A skewness of 1.89 confirms strong positive skew, with most suburbs concentrated at lower elevations. Despite this variation, the scatterplot of price versus elevation shows very little relationship, suggesting elevation has limited impact on property prices compared to stronger variables such as CBD distance and suburb income.
+
+**Bedrooms, Bathrooms and Parking Spaces:** The typical property in the dataset contains around 4 bedrooms, 2 bathrooms, and 2 parking spaces. Most properties are concentrated within the 3–5 bedroom range, while bathroom and parking space distributions are centred around 2. The boxplots show that properties with more bedrooms and bathrooms generally achieve higher median sale prices, indicating these variables have a positive relationship with property value. In comparison, parking spaces show a weaker relationship with sale price, as median prices remain relatively similar across most parking categories.
+
+The exploratory data analysis showed that Sydney property prices in 2021 varied greatly across different suburbs and property types. Variables such as distance from the CBD, suburb median income, property size, and number of bathrooms showed the clearest relationships with sale price, while elevation and parking spaces had less influence. The analysis also highlighted the strong positive skew present in several variables due to a small number of very large or expensive properties.
+
+\newpage
+**Task 2**
+
+The two grouping variables I selected for this analysis are (property size group) and (CBD distance group). Looking at the exploratory data analysis, these two showed the clearest differences in property prices across their categories. CBD distance in particular stood out the scatterplot showed a strong negative relationship with price, and the boxplots made it obvious that inner suburbs were in a completely different price bracket. Property size also showed a consistent pattern worth investigating further. I considered suburb median income as well, but since it tends to move together with CBD distance, I felt CBD distance was the more direct and interpretable choice for the investment group. 
+
+I first tried running ANOVA directly on the raw sale prices, but when I checked the assumptions it was clear that wasn’t going to work as none of the assumptions were met , the Q-Q plot showed the residuals were far from normal, and Bartlett’s test confirmed the variances were unequal across groups as well. So I went back and applied a log transformation to the sale price before re-running the test. Once I did that, the QQ plots looked much more reasonable and I was comfortable moving forward with ANOVA on the transformed data.
+
+**Property Size Group**
+
+### Hypotheses
+\[
+H_0 : \mu_{small} = \mu_{medium} = \mu_{large}
+\]
+\[
+H_1 : \text{At least one mean log property price differs}
+\]
+
+### Assumptions
+
+- **Independence:** Observations are independent of each other.
+
+- **Normality:** The Q-Q plot shows that the residuals are approximately normally distributed.
+
+- **Equal Variance:** From the Bartlett's test we got  p = 0.004, which means  that the equal variance assumption is not met across groups. Despite this violation, ANOVA remains reasonably robust when sample sizes are large, and with n = 3,676 observations, proceeding with the one-way ANOVA is still justified.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=3.5}
+house$log_price <- log(house$price)
+par(mfrow = c(1,2), mar = c(4,4,2,1))
+boxplot(log_price ~ property_size_group, data = house,
+        main = "Log Price by Property Size",
+        xlab = "Property Size Group", ylab = "Log Price", col = "lightblue")
+model_size_log <- aov(log_price ~ property_size_group, data = house)
+qqnorm(residuals(model_size_log), main = "QQ Plot Residuals")
+qqline(residuals(model_size_log))
+par(mfrow = c(1,1))
+```
+\newpage
+Bartlett's test for homogeneity of variance across property size groups
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+bt_size <- bartlett.test(log_price ~ property_size_group, data = house)
+knitr::kable(data.frame(
+  `K-squared` = round(bt_size$statistic, 3),
+  df          = bt_size$parameter,
+  `p-value`   = format.pval(bt_size$p.value, digits = 3)
+), row.names = FALSE)
+```
+
+One-way ANOVA: log sale price by property size group
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(broom::tidy(model_size_log),
+             digits = 3,
+             col.names = c("Source", "df", "Sum Sq", "Mean Sq", "F value", "p-value"))
+```
+### Test Statistic and Decision
+\[
+F = 57.45,df = 2,3673  \quad p < 0.001
+\]
+Since $p < 0.05$, the null hypothesis is rejected.
+
+### Conclusion
+
+The ANOVA produced $F = 57.45$ ($p < 0.001$), so the null hypothesis is rejected. Therefore we can conclude that there is strong evidence that mean log property prices differ across property size groups, with larger properties generally achieving higher prices.
+
+**Distance From CBD Group**
+
+### Hypotheses
+\[
+H_0 : \mu_{inner} = \mu_{middle} = \mu_{outer}
+\]
+\[
+H_1 : \text{At least one mean log property price differs}
+\]
+
+### Assumptions
+
+- **Independence:** Obervations are independent of each other.
+
+- **Normality:**The Q-Q plot shows that the residuals are normally distributed.
+
+- **Equal Variance:**Bartlett's test returned p < 0.001, confirming that the equal variance assumption is not met across the CBD distance groups. Despite this, ANOVA is reasonably robust when sample sizes are large, and with n = 3,676 observations we can still proceed with the test.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=3.5}
+par(mfrow = c(1,2), mar = c(4,4,2,1))
+boxplot(log_price ~ km_from_cbd_group, data = house,
+        main = "Log Price by CBD Distance",
+        xlab = "CBD Distance Group", ylab = "Log Price", col = "lightgreen")
+model_cbd_log <- aov(log_price ~ km_from_cbd_group, data = house)
+qqnorm(residuals(model_cbd_log), main = "QQ Plot Residuals")
+qqline(residuals(model_cbd_log))
+par(mfrow = c(1,1))
+```
+
+Bartlett's test for homogeneity of variance across CBD distance groups
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+bt_cbd <- bartlett.test(log_price ~ km_from_cbd_group, data = house)
+knitr::kable(data.frame(
+  `K-squared` = round(bt_cbd$statistic, 3),
+  df          = bt_cbd$parameter,
+  `p-value`   = format.pval(bt_cbd$p.value, digits = 3)
+), row.names = FALSE)
+```
+
+One-way ANOVA: log sale price by CBD distance group
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(broom::tidy(model_cbd_log),
+             digits = 3,
+             col.names = c("Source", "df", "Sum Sq", "Mean Sq", "F value", "p-value"))
+```
+### Results
+
+### Test Statistic and Decision
+\[
+F = 579.9,df =2,3673 \quad p < 0.001
+\]
+Since $p < 0.05$, the null hypothesis is rejected.
+
+### Conclusion
+
+The ANOVA produced $F = 579.9$ ($p < 0.001$), so the null hypothesis is rejected. There is very strong evidence that mean log property prices differ across CBD distance groups, with inner suburb properties commanding substantially higher prices than middle and outer suburbs.
+
+\newpage
+
+
+**Task 3**
+
+**Property Size Group**
+
+Tukey HSD pairwise comparisons: log price by property size group
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tukey_size <- TukeyHSD(model_size_log)
+knitr::kable(as.data.frame(tukey_size$property_size_group),
+             digits = 4,
+             col.names = c("Difference", "Lower 95% CI", "Upper 95% CI", "Adjusted p-value"))
+```
+The Tukey HSD test confirmed that all three property size groups differed significantly from one another (p < 0.001 for all comparisons). Contrary to what might be expected, the ordering of mean log prices runs large > small > medium rather than large > medium > small. Large properties had the highest prices, while medium properties were actually the cheapest group. Converting the log-price differences back to the original price scale, large properties are approximately 23% more expensive than medium properties (exp(0.205) = 1.23), and approximately 14% more expensive than small properties (exp(0.127) = 1.14). Small properties are approximately 8% more expensive than medium properties (exp(0.077) = 1.08), with medium being the least expensive group. This unexpected ordering likely reflects the fact that small properties in Sydney tend to be located in expensive inner city suburbs where land is scarce and demand is high, pushing their prices above those of medium sized properties which are more commonly found in middlering suburbs. For the investment group, this means that large block properties carry a clear and measurable price premium, but below that threshold size alone does not reliably predict price, as location plays a stronger role in determining value.
+
+
+**Distance From CBD Group**
+
+Tukey HSD pairwise comparisons: log price by CBD distance group
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tukey_cbd <- TukeyHSD(model_cbd_log)
+knitr::kable(as.data.frame(tukey_cbd$km_from_cbd_group),
+             digits = 4,
+             col.names = c("Difference", "Lower 95% CI", "Upper 95% CI", "Adjusted p-value"))
+```
+From The Tukey HSD test we found  statistically significant differences between all three CBD distance groups (p < 0.001 for all comparisons). Converting the log-price differences to the original price scale reveals the practical magnitude of these gaps: inner suburb properties are approximately 85% more expensive than outer suburb properties (exp(0.615) = 1.85), and approximately 44% more expensive than middle suburb properties (exp(0.365) = 1.44). Middle suburbs also command prices around 28% above outer suburbs (exp(0.250) = 1.28). These are large differences by any practical standard and represent the strongest location based price signal in the dataset. For the investment group, closenesss to the CBD should be treated as the primary valuation driver when assessing acquisition targets he data suggests that moving from outer to inner suburbs roughly doubles the expected sale price, a premium that should be explicitly factored into both acquisition budgets and expected return calculations.
+
+\newpage
+## Task 4
+
+I selected property size, distance from the CBD, suburb median income, number 
+of bedrooms, number of bathrooms, parking spaces, and suburb elevation as 
+candidate predictors. The EDA showed that CBD distance had the strongest 
+negative relationship with price, while suburb median income and number of 
+bathrooms showed clear positive relationships. Property size, bedrooms, and 
+parking were included as important physical property characteristics. 
+
+The EDA also revealed that sale prices were strongly right-skewed 
+(skewness = 1.72). Fitting a regression model on raw prices produced non-normal 
+residuals and clear heteroscedasticity. A log transformation was therefore 
+applied to the response variable before model fitting, which stabilises variance 
+and brings residuals closer to normality, producing more reliable estimates and 
+inference.
+
+## Model Equation
+
+The fitted regression model takes the following form:
+
+$$\hat{y} = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \beta_4 x_4 + \beta_5 x_5 + \beta_6 x_6 + \beta_7 x_7$$
+
+Where:
+
+- $\hat{y}$ = predicted log(price)
+- $x_1$ = property size (m²)
+- $x_2$ = distance from CBD (km)
+- $x_3$ = suburb median income (AUD)
+- $x_4$ = suburb elevation (m)
+- $x_5$ = number of bedrooms
+- $x_6$ = number of bathrooms
+- $x_7$ = number of parking spaces
+
+All seven predictors were retained in the final model as each was statistically significant at the 5% level, confirming their individual contribution to explaining sale price.
+
+
+## Hypotheses
+
+The overall model significance is tested using the F-test:
+
+$$H_0 : \beta_1 = \beta_2 = \beta_3 = \beta_4 = \beta_5 = \beta_6 = \beta_7 = 0$$
+$$H_1 : \text{At least one } \beta_i \neq 0$$
+
+For each individual predictor, a t-test is conducted:
+
+$$H_0 : \beta_i = 0 \quad \text{(predictor has no effect on (price)}$$
+$$H_1 : \beta_i \neq 0 \quad \text{(predictor has a significant effect on (price)}$$
+
+## Correlation Matrix
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+house$log_price <- log(house$price)
+
+modellm <- lm(log(price) ~ property_size + km_from_cbd + 
+                suburb_median_income + suburb_elevation +
+                num_bed + num_bath + num_parking, data = house)
+
+cor_matrix <- cor(house[, c("log_price", "property_size", "km_from_cbd", 
+                             "suburb_median_income", "suburb_elevation",
+                             "num_bed", "num_bath", "num_parking")], 
+                  use = "complete.obs")
+
+rownames(cor_matrix) <- colnames(cor_matrix) <- c("Log Price", "Size", 
+                                                    "CBD Dist", "Income", 
+                                                    "Elevation", "Beds", 
+                                                    "Baths", "Parking")
+
+knitr::kable(round(cor_matrix, 2), 
+             )
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=7, fig.cap="Scatterplot Matrix of Predictors and Log Price"}
+pairs(house[, c("log_price", "property_size", "km_from_cbd", 
+                "suburb_median_income", "suburb_elevation",
+                "num_bed", "num_bath", "num_parking")],
+      col = "steelblue", pch = 20, cex = 0.3,
+      main = "Scatterplot Matrix of Predictors and Log Price")
+```
+\newpage
+Looking at the correlation matrix, suburb median income (0.47) and distance 
+from CBD (-0.51) had the strongest correlations with log price. Number of 
+bathrooms (0.24) showed a moderate positive relationship. Property size (0.08), 
+bedrooms (0.10), parking (0.01), and elevation (0.05) showed weaker 
+correlations. Number of bedrooms and bathrooms were moderately correlated with 
+each other (0.63), suggesting some multicollinearity between these two 
+predictors, which is worth keeping in mind when interpreting their individual 
+coefficients.
+
+## Assumptions
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=6}
+par(mfrow = c(2,2), mar = c(4,4,3,1))
+plot(modellm, col = "steelblue", pch = 20, cex = 0.6,
+     col.smooth = "red", lwd.smooth = 2)
+par(mfrow = c(1,1))
+```
+
+**Linearity:**The relationship is approximately linear, with only a slight curve in the Residuals vs Fitted plot.
+
+**Independence:**Observations are independent of each other because each property sale is a separate transaction.
+
+**Normality:** The residuals are mostly normal, but there are some deviations in the upper tail due to a few very high value properties.
+
+**Constant Variance:** There is roughly constant variance, though there is a slight increase in spread at higher fitted values
+
+\newpage
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model_coef <- as.data.frame(summary(modellm)$coefficients)
+rownames(model_coef) <- c("Intercept", "Property Size", "CBD Distance", 
+                           "Median Income", "Elevation", "Bedrooms", 
+                           "Bathrooms", "Parking")
+knitr::kable(round(model_coef, 6),
+             col.names = c("Estimate", "Std Error", "t value", "p value"),
+)
+```
+
+## Test Statistic and Decision
+ F = 502.9 (df = 7, 3668, p < 0.001), so the null 
+hypothesis is rejected. The model is statistically significant, 
+meaning at least one predictor has a meaningful relationship with sale price. 
+The model explains approximately 48.97% of the variation in log property prices 
+(R$^2$ = 0.4897). Every individual predictor was statistically significant at 
+the 5% level, with distance from CBD, suburb median income, and number of 
+bathrooms being the strongest predictors. Number of bedrooms was the weakest, 
+remaining significant at p = 0.024.
+
+## Coefficient Interpretation
+
+Since the response variable is log(price), each coefficient is interpreted as a percentage change in sale price using $(\exp(\beta) - 1) \times 100\%$.
+
+**Property Size ($\beta$ = 0.000274):** Each additional square metre of land is associated with approximately 0.027% higher sale price (exp(0.000274) = 1.000274). While this seems small, over 100 square metres this compounds to roughly a 2.8% price increase (exp(0.0274) = 1.028), meaning larger blocks do carry a meaningful premium.
+
+**Distance from CBD ($\beta$ = -0.0138):** Each additional kilometre from the CBD is associated with approximately 1.4% lower sale price (exp(-0.0138) = 0.9863). This is the strongest predictor in the model, confirming that location relative to the city centre is the primary driver of property value in Sydney.
+
+**Suburb Median Income ($\beta$ = 0.00001486):** For every \$1,000 increase in a suburb's median household income, sale prices are approximately 1.5% higher (exp(0.01486) = 1.015), reflecting the premium that buyers place on living in more affluent suburbs.
+
+**Suburb Elevation ($\beta$ = -0.000534):** Higher elevation is associated with slightly lower prices, with each additional metre corresponding to approximately 0.05% lower sale price (exp(-0.000534) = 0.9995). While statistically significant, this effect is practically very small.
+
+**Bedrooms ($\beta$ = 0.01945):** Each additional bedroom is associated with approximately 2.0% higher sale price (exp(0.01945) = 1.020).
+
+**Bathrooms ($\beta$ = 0.1317):** Each additional bathroom is associated with approximately 14.1% higher sale price (exp(0.1317) = 1.141). Bathrooms are the strongest property-level predictor, suggesting that buyers place considerable value on bathroom count when assessing a property.
+
+**Parking ($\beta$ = 0.01946):** Each additional parking space is associated with approximately 2.0% higher sale price (exp(0.01946) = 1.020), reflecting the practical value of off-street parking in the Sydney market.
+\newpage
+
+**Limitations**
+
+Although the log transformation improved the model, some minor problems still remain. The diagnostic plots show that the relationships are not perfectly linear, and there are small departures from normality because of a few extremely expensive properties in the dataset. The plots also show slightly higher variation at larger fitted values, meaning the model is less accurate when predicting prices for very expensive properties. Three observations were identified as potentially influential, which means they may have a noticeable effect on the model results. There is also a moderate correlation between the number of bedrooms and bathrooms (0.63), so their individual effects on price should be interpreted carefully.
+
+The model explains around 49% of the variation in property prices, while the remaining 51% is affected by factors not included in the dataset, such as property condition, renovations, school catchment areas, and other local market factors. Therefore, the investment group should use the model predictions as estimates rather than exact values and combine them with local market knowledge when making acquisition decisions.
+
