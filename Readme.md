@@ -4,7 +4,7 @@ A statistical case study analysing residential house sales across Sydney in 2021
 
 ## Overview
 
-This project analyses a dataset of 3,676 residential house sales across Sydney in 2021 for a hypothetical property investment group. The analysis covers four tasks:
+This project analyses a dataset of 3,676 residential house sales across Sydney in 2021 for a hypothetical property investment group. The analysis covers four tasks: 
 
 1. **Exploratory Data Analysis (EDA)** – summary statistics, distributions, and relationships between price and key variables (distance from CBD, suburb income, property size, bedrooms, bathrooms, parking).
 2. **Group Comparisons** – one-way ANOVA testing whether mean (log) property prices differ across property size groups and CBD distance groups, including assumption checks (Q-Q plots, Bartlett's test) and a log transformation of price to address non-normality and heteroscedasticity.
